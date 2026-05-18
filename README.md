@@ -6,6 +6,7 @@
 
 This repository records my work around **deploying and validating AniSora on a Linux multi-GPU server**, with a focus on:
 
+- upstream reference: [bilibili/Index-anisora](https://github.com/bilibili/Index-anisora/tree/main)
 - analyzing the 12GB low-VRAM runtime package structure
 - adapting Windows-oriented runtime dependencies for Linux inference
 - validating multiple inference settings for quality, duration, consistency, and VRAM trade-offs
