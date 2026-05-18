@@ -1,6 +1,6 @@
 # AniSora-based-video-generation
 
-> Deployment, Linux compatibility adaptation, and inference experiments for the Bilibili AniSora 12GB image-to-video runtime package.
+> Deployment, Linux compatibility adaptation, inference experiments, and lightweight benchmarking for the Bilibili AniSora 12GB image-to-video runtime package.
 
 ## Overview
 
@@ -10,7 +10,7 @@ This repository records my work around **deploying and validating AniSora on a L
 - analyzing the 12GB low-VRAM runtime package structure
 - adapting Windows-oriented runtime dependencies for Linux inference
 - validating multiple inference settings for quality, duration, consistency, and VRAM trade-offs
-- organizing reusable configs, minimal compatibility patches, and experiment notes
+- organizing reusable configs, runtime patches, recorded outputs, and benchmark artifacts
 
 This project is **not** about model pretraining or large-scale finetuning. It is an **engineering + inference optimization** project centered on getting a practical AniSora pipeline running in a real Linux environment.
 
@@ -25,6 +25,7 @@ This project is **not** about model pretraining or large-scale finetuning. It is
   - quality config: `480p / 4 steps / 49 frames`
   - longer video config: `480p / 4 steps / 97 frames`
 - Compared results across visual quality, temporal consistency, and memory usage
+- Added reusable scripts for single-run, batch-run, benchmark building, and comparison board extraction
 
 ## Key Results
 
@@ -63,16 +64,34 @@ Additional observations:
 ├── assets
 │   ├── compare_duration_example1.png
 │   ├── compare_frames_example1.png
+│   ├── inference_360_inputs
 │   └── input_example1.png
 ├── configs
 │   ├── anisora_linux_demo_480p4_49f.example.json
 │   ├── anisora_linux_demo_480p4_97f.example.json
 │   └── anisora_linux_demo_smoke_49f.example.json
+├── data
+│   ├── inference-imgs-360
+│   └── inference_360.txt
 ├── docs
+│   ├── benchmark_report.md
+│   ├── linux_compatibility.md
 │   └── project_report_zh.md
-└── runtime_patches
-    ├── q8_kernels
-    └── vllm
+├── results
+│   ├── benchmark.csv
+│   ├── benchmark_manifest.json
+│   ├── benchmark_summary.md
+│   ├── boards
+│   └── videos
+├── runtime_patches
+│   ├── q8_kernels
+│   └── vllm
+└── scripts
+    ├── build_benchmark.py
+    ├── common.py
+    ├── extract_compare_frames.py
+    ├── run_batch.py
+    └── run_single.py
 ```
 
 ## Notes on the Linux Compatibility Fix
@@ -86,23 +105,99 @@ The original AniSora 12GB runtime package contained Windows-oriented pieces that
 
 The patches in `runtime_patches/` are **minimal experiment-time shims**, intended for compatibility validation rather than peak inference speed.
 
+More details are documented in:
+
+- [docs/linux_compatibility.md](docs/linux_compatibility.md)
+
+## Benchmark Artifacts
+
+This repository now includes:
+
+- recorded output videos for the tested single-demo and batch-360 runs
+- `results/benchmark_manifest.json` with structured experiment metadata
+- `results/benchmark.csv` generated from the manifest and probed video metadata
+- `results/benchmark_summary.md` with per-config aggregates
+- `results/boards/*.png` comparison boards generated from the saved videos
+
+For the benchmark-oriented write-up, see:
+
+- [docs/benchmark_report.md](docs/benchmark_report.md)
+
+## Reproduction Helpers
+
+### Single run
+
+```bash
+python scripts/run_single.py \
+  --runtime-root "/mnt/local/home/hbxu/Bilibili vedio/models/wan" \
+  --model-path "/home/hbxu/local/Bilibili vedio/models/wan/models/anisora" \
+  --config-json configs/anisora_linux_demo_480p4_49f.example.json \
+  --image-path assets/input_example1.png \
+  --prompt "your prompt here" \
+  --save-video-path outputs/single_demo.mp4 \
+  --dry-run
+```
+
+### Batch run
+
+```bash
+python scripts/run_batch.py \
+  --runtime-root "/mnt/local/home/hbxu/Bilibili vedio/models/wan" \
+  --model-path "/home/hbxu/local/Bilibili vedio/models/wan/models/anisora" \
+  --config-json configs/anisora_linux_demo_480p4_49f.example.json \
+  --batch-file data/inference_360.txt \
+  --data-root . \
+  --output-dir outputs/batch_360 \
+  --output-suffix quality_49f \
+  --dry-run
+```
+
+### Benchmark generation
+
+```bash
+python scripts/build_benchmark.py \
+  --manifest results/benchmark_manifest.json \
+  --output-csv results/benchmark.csv \
+  --output-md results/benchmark_summary.md
+```
+
+### Comparison board extraction
+
+```bash
+python scripts/extract_compare_frames.py \
+  --videos results/videos/single/single_demo_quality_49f.mp4 results/videos/single/single_demo_quality_97f.mp4 \
+  --labels quality_49f quality_97f \
+  --title "Single demo: 3s vs 6s" \
+  --output results/boards/single_3s_vs_6s.png
+```
+
 ## Included Artifacts
 
 - `docs/project_report_zh.md`
   - a complete Chinese project report for this AniSora deployment and experiment workflow
+- `docs/linux_compatibility.md`
+  - Linux-side runtime blockers, fallback patches, and limitations
+- `docs/benchmark_report.md`
+  - a benchmark-oriented summary built from the recorded outputs in this repository
 - `configs/*.example.json`
   - reusable example configs matching the tested smoke / 480p / 6s settings
+- `data/inference_360.txt`
+  - the batch prompt file used for the 360-degree turning experiments
 - `runtime_patches/`
   - minimal Linux fallback shims used to validate the runtime pipeline
+- `results/`
+  - benchmark tables, comparison boards, and the recorded sample output videos
+- `scripts/`
+  - helper scripts for single-run, batch-run, benchmark generation, and comparison board extraction
 
 ## Important Disclaimer
 
 - This repository does **not** include AniSora model weights
 - This repository does **not** mirror the full upstream runtime package
-- The code here mainly records my own deployment notes, compatibility patches, configs, and experiment summaries
+- The code here mainly records my own deployment notes, compatibility patches, configs, scripts, and experiment summaries
 
-## Project Report
-
-For the full Chinese write-up, see:
+## Project Reports
 
 - [docs/project_report_zh.md](docs/project_report_zh.md)
+- [docs/linux_compatibility.md](docs/linux_compatibility.md)
+- [docs/benchmark_report.md](docs/benchmark_report.md)
